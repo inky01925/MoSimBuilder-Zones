@@ -257,6 +257,9 @@ public class BuildNode: MonoBehaviour
                             case NodeControlType.AlwaysPerform:
                                 if (action.PieceType == currentGamePiece.pieceType)
                                 {
+                                    var zoneManager = GetComponent<ZoneManager>() ?? GetComponentInParent<ZoneManager>() ?? GetComponentInChildren<ZoneManager>();
+                                    if (zoneManager != null && zoneManager.IsActiveZoneDisabled()) break;
+                                    
                                     if (!PerformTimerCheck(ref action)) break;
                                     actionDone = true;
                                     currentState = NodeState.Outaking;

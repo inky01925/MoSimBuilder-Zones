@@ -23,6 +23,9 @@ public class PointAtTarget : MonoBehaviour
     [ConditionalField(true, nameof(WhenAtSetpoint))] [SerializeField]
     private string SetpointName;
     
+    [ConditionalField(true, nameof(IsZone))]
+    [SerializeField] private ZoneManager zoneManager;
+    
     [ConditionalField(true, nameof(IsPreset), true)]
     [SerializeField] private Vector3[] extraTargets;
 
@@ -37,6 +40,7 @@ public class PointAtTarget : MonoBehaviour
     private bool IsPreset() => targetType == TargetType.Preset;
     private bool WhenAtSetpoint() => targetWhen == TargetWhen.AtSetpoint;
     private bool IsInterpolating() => targetingMethod == TargetingMethod.Interpolation;
+    private bool IsZone() => targetType == TargetType.Zone;
     
     private List<Vector3> _allTargets;
     
@@ -130,6 +134,8 @@ public class PointAtTarget : MonoBehaviour
                 return getFurthestTarget();
             case TargetType.Custom:
                 return GetClosestCustomTarget();
+            case TargetType.Zone:
+                return GetZoneTarget();
         }
         
         return Vector3.zero;
@@ -192,6 +198,12 @@ public class PointAtTarget : MonoBehaviour
         }
     
         return furthestTarget;
+    }
+
+    private Vector3 GetZoneTarget()
+    {
+        if (zoneManager == null) return Vector3.zero;
+        return zoneManager.GetActiveZoneTarget() ?? Vector3.zero;
     }
 
     //direct calculation stuff
