@@ -16,8 +16,10 @@ public class InterpolateNode: MonoBehaviour
     
     [Header("Targeting Settings")]
     [ConditionalField(true, nameof(IsPreset))]
-    [SerializeField] private Vector3 targetPosition;
+    [SerializeField] private Vector3 targetPosition = new Vector3(-3.65f, 2f, 0f);
 
+    [ConditionalField(true, nameof(IsZone))]
+    [SerializeField] private ZoneManager zoneManager;
     [ConditionalField(true, nameof(WhenAtSetpoint))] [SerializeField]
     private string SetpointName;
     [ConditionalField(true, nameof(WhenAtSetpoint))]
@@ -35,6 +37,7 @@ public class InterpolateNode: MonoBehaviour
     [SerializeField] private float Output;
     private bool IsPreset() => targetType == TargetType.Preset;
     private bool WhenAtSetpoint() => targetWhen == TargetWhen.AtSetpoint;
+    private bool IsZone() => targetType == TargetType.Zone;
     
     private bool IsPlaying() => EditorApplication.isPlaying;
 
@@ -140,6 +143,8 @@ public class InterpolateNode: MonoBehaviour
                 return getFurthestTarget();
             case TargetType.Custom:
                 return GetClosestCustomTarget();
+            case TargetType.Zone:
+                return GetZoneTarget();
         }
         
         return Vector3.zero;
@@ -202,6 +207,11 @@ public class InterpolateNode: MonoBehaviour
         }
     
         return furthestTarget;
+    }
+
+    private Vector3 GetZoneTarget()
+    {
+        return zoneManager?.GetActiveZoneTarget() ?? new Vector3(-3.65f, 2f, 0f);
     }
     
     //Interpolation stuff

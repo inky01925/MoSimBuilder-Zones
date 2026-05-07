@@ -242,6 +242,8 @@ public class AutoAim : MonoBehaviour
                 return GetFurthestTarget();
             case TargetType.Custom:
                 return GetClosestCustomTarget();
+            case TargetType.Zone:
+                return GetZoneTarget();
         }
         
         return Vector3.zero;
@@ -308,5 +310,11 @@ public class AutoAim : MonoBehaviour
         }
     
         return furthestTarget;
+    }
+
+    private Vector3 GetZoneTarget()
+    {
+        // Zone targeting not implemented for AutoAim
+        return Vector3.zero;
     }
 }

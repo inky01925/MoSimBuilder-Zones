@@ -74,7 +74,8 @@ namespace Util
         Closest,
         Furthest,
         Preset,
-        Custom
+        Custom,
+        Zone
     }
 
     public enum AimAtWhen
