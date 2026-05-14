@@ -17,6 +17,9 @@ public class ZoneManagerEditor : UnityEditor.Editor
     private SerializedProperty currentAngleProp;
     private SerializedProperty targetAngleProp;
     private SerializedProperty steerOutputProp;
+    private SerializedProperty conditionMechanismProp;
+    private SerializedProperty controllerButtonProp;
+    private SerializedProperty keyboardButtonProp;
 
     private enum ZonePlane
     {
@@ -44,6 +47,9 @@ public class ZoneManagerEditor : UnityEditor.Editor
         currentAngleProp = serializedObject.FindProperty("currentAngle");
         targetAngleProp = serializedObject.FindProperty("targetAngle");
         steerOutputProp = serializedObject.FindProperty("steerOutput");
+        conditionMechanismProp = serializedObject.FindProperty("conditionMechanism");
+        controllerButtonProp = serializedObject.FindProperty("controllerButton");
+        keyboardButtonProp = serializedObject.FindProperty("keyboardButton");
     }
 
     public override void OnInspectorGUI()
@@ -56,7 +62,14 @@ public class ZoneManagerEditor : UnityEditor.Editor
 
         if (targetWhenProp.enumValueIndex == (int)TargetWhen.AtSetpoint)
         {
+            EditorGUILayout.PropertyField(conditionMechanismProp);
             EditorGUILayout.PropertyField(setpointNameProp);
+        }
+
+        if (targetWhenProp.enumValueIndex == (int)TargetWhen.WhenPressing)
+        {
+            EditorGUILayout.PropertyField(controllerButtonProp);
+            EditorGUILayout.PropertyField(keyboardButtonProp);
         }
 
         EditorGUILayout.PropertyField(showDebugProp);

@@ -1,6 +1,7 @@
 using System;
 using MyBox;
 using UnityEngine;
+using UnityEngine.InputSystem;
 #if UNITY_EDITOR
 using UnityEditor;
 #endif
@@ -70,25 +71,32 @@ public class ZoneManager : MonoBehaviour
     [Header("Activation")]
     [SerializeField] private TargetWhen targetWhen = TargetWhen.Always;
     [SerializeField] private BuildMechanism controllingMechanism;
-    [ConditionalField(true, nameof(WhenAtSetpoint))]
+    [SerializeField] private BuildMechanism conditionMechanism;
     [SerializeField] private string setpointName;
+
+    [Header("Button Control Settings")]
+    [SerializeField] private ControllerInputs controllerButton;
+    [SerializeField] private KeyboardInputs keyboardButton;
+    [SerializeField] private string debugTestField = "visible?";
 
     [Header("Debug")]
     [SerializeField] private bool showDebug = true;
-    [ConditionalField(true, nameof(showDebug))]
     [SerializeField] private string activeZoneName;
-    [ConditionalField(true, nameof(showDebug))]
     [SerializeField] private Vector3 currentTarget;
-    [ConditionalField(true, nameof(showDebug))]
     [SerializeField] private float currentAngle;
-    [ConditionalField(true, nameof(showDebug))]
     [SerializeField] private float targetAngle;
-    [ConditionalField(true, nameof(showDebug))]
     [SerializeField] private float steerOutput;
 
     private SwerveController controller;
     private JointController jointController;
     private PIDController steeringPID;
+
+    private PlayerInput _playerInput;
+    private InputActionMap _inputMap;
+
+    
+    [HideInInspector] [SerializeField] private bool whenAtSetpoint;
+    [HideInInspector] [SerializeField] private bool whenButton;
 
     private void Start()
     {
@@ -110,8 +118,26 @@ public class ZoneManager : MonoBehaviour
         };
     }
 
+    private void OnValidate()
+    {
+        whenAtSetpoint = targetWhen == TargetWhen.AtSetpoint;
+        whenButton = targetWhen == TargetWhen.WhenPressing;
+    }
+
     private void FixedUpdate()
     {
+
+        if (_playerInput == null && targetWhen == TargetWhen.WhenPressing)
+        {
+            _playerInput = gameObject.GetComponent<PlayerInput>();
+            if (_playerInput != null)
+            {
+                _inputMap = _playerInput.actions.FindActionMap("Robot");
+                _inputMap?.Enable();
+            }
+            return;
+        }
+
         if (!Application.isPlaying)
             return;
 
@@ -126,7 +152,13 @@ public class ZoneManager : MonoBehaviour
         currentTarget = activeZone.Value.targetPosition;
 
         if (activeZone.Value.action == ZoneAction.Deadzone)
+        {
+            jointController?.OveridePosition(0f);
+            targetAngle = 0f;
+            currentAngle = 0f;
+            steerOutput = 0f;
             return;
+        }
 
         if (ShouldUseDriveSteering(activeZone.Value))
         {
@@ -179,28 +211,47 @@ public class ZoneManager : MonoBehaviour
         return zone.action == ZoneAction.JointPosition && jointController != null;
     }
 
-    private bool WhenAtSetpoint() => targetWhen == TargetWhen.AtSetpoint;
-
     private bool IsActivationSatisfied()
     {
         if (targetWhen == TargetWhen.Always)
             return true;
 
-        if (targetWhen != TargetWhen.AtSetpoint)
-            return false;
+        if (targetWhen == TargetWhen.WhenPressing)
+        {
+            if (_inputMap == null)
+            {
+                return false;
+            }
 
-        var mechanism = controllingMechanism ?? Utils.FindParentObjectComponent<BuildMechanism>(gameObject);
-        if (mechanism == null)
-            return false;
+            var controllerAction = _inputMap.FindAction(controllerButton.ToString());
+            var keyboardAction = _inputMap.FindAction(keyboardButton.ToString());
 
-        var controller = mechanism.GetController();
-        if (controller == null)
-            return false;
+            var controllerHeld = controllerAction != null &&
+                                controllerAction.IsPressed() &&
+                                (controllerAction.activeControl?.device is Gamepad);
 
-        return string.Equals(
-            (controller.getActiveSetpoint() ?? string.Empty).Trim(),
-            (setpointName ?? string.Empty).Trim(),
-            StringComparison.OrdinalIgnoreCase);
+            var keyboardHeld = keyboardAction != null &&
+                            keyboardAction.IsPressed() &&
+                            (keyboardAction.activeControl?.device is Keyboard);
+
+            return controllerHeld || keyboardHeld;
+        }
+
+        if (targetWhen == TargetWhen.AtSetpoint)
+        {
+            var mechanism = conditionMechanism ?? controllingMechanism ?? Utils.FindParentObjectComponent<BuildMechanism>(gameObject);
+            if (mechanism == null) return false;
+
+            var controller = mechanism.GetController();
+            if (controller == null) return false;
+
+            return string.Equals(
+                (controller.getActiveSetpoint() ?? string.Empty).Trim(),
+                (setpointName ?? string.Empty).Trim(),
+                StringComparison.OrdinalIgnoreCase);
+        }
+
+        return false;
     }
 
     private float CalculateTargetAngle(Vector3 targetPosition)

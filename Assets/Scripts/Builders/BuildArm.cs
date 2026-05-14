@@ -30,6 +30,12 @@ public class BuildArm : BuildMechanism
     [ConditionalField(nameof(useNoWrapPoint), false)]
     [SerializeField] private float noWrapAngle = 180;
 
+    [SerializeField] private bool useAngleRange = false;
+    [ConditionalField(nameof(useAngleRange), false)]
+    [SerializeField] private float minAngle = 0f;
+    [ConditionalField(nameof(useAngleRange), false)]
+    [SerializeField] private float maxAngle = 180f;
+
     [Header("Use Advanced Settings")]
     [SerializeField] private bool useAdvancedSettings;
     [ConditionalField(nameof(useAdvancedSettings), false)]
@@ -400,6 +406,10 @@ public class BuildArm : BuildMechanism
         _controller.joint = _joint;
         _controller.useNoWrap = useNoWrapPoint;
         _controller.noWrapAngle = noWrapAngle;
+
+        _controller.useAngleRange = useAngleRange;
+        _controller.minAngle = minAngle;
+        _controller.maxAngle = maxAngle;
     }
 
     private void GenJoint()

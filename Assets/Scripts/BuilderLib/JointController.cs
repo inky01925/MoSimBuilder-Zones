@@ -20,6 +20,10 @@ public class JointController : MonoBehaviour
 
     public bool useNoWrap;
     public float noWrapAngle;
+
+    public bool useAngleRange;
+    public float minAngle;
+    public float maxAngle;
     
     /// <summary>
     /// Specifies the Euler axis to control. must be (1,0,0) (0,1,0) or (0,0,1)
@@ -131,6 +135,11 @@ public class JointController : MonoBehaviour
             return;
         }
         noWrapAngle = Mathf.Repeat(noWrapAngle, 360);
+
+        // if (useAngleRange)
+        // {
+        //     _targetPosition = Mathf.Clamp(_targetPosition, minAngle, maxAngle);
+        // }
         
         if (_sequenceTime > 0)
         {
@@ -364,10 +373,20 @@ public class JointController : MonoBehaviour
             _targetPosition = overidePosition;
             OverideActive = false;
         }
+
+        if (useAngleRange)
+        {
+            _targetPosition = Mathf.Clamp(_targetPosition, minAngle, maxAngle);
+        }
     }
 
     private void FixedUpdate()
     {
+
+        if (useAngleRange)
+        {
+            _targetPosition = Mathf.Clamp(_targetPosition, minAngle, maxAngle);
+        }
         
         float rawPID;
 

@@ -90,6 +90,7 @@ namespace Util
     {
         Always,
         AtSetpoint,
+        WhenPressing,
     }
 
     public enum TargetingMethod
