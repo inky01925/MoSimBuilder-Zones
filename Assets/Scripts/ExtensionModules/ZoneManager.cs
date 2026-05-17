@@ -40,23 +40,23 @@ public class ZoneManager : MonoBehaviour
         public ZoneAction action;
         public Vector3 targetPosition;
         public float jointTargetValue;
+        public float angleOffset; // per-zone offset
 
         [Tooltip("Color used to draw this zone in the editor.")]
         public Color zoneColor;
-
         public bool Contains(Vector3 worldPosition, ZonePlane plane)
         {
             switch (plane)
             {
                 case ZonePlane.XY:
                     return worldPosition.x >= minX && worldPosition.x <= maxX &&
-                           worldPosition.y >= minY && worldPosition.y <= maxY;
+                        worldPosition.y >= minY && worldPosition.y <= maxY;
                 case ZonePlane.YZ:
                     return worldPosition.y >= minX && worldPosition.y <= maxX &&
-                           worldPosition.z >= minY && worldPosition.z <= maxY;
+                        worldPosition.z >= minY && worldPosition.z <= maxY;
                 default:
                     return worldPosition.x >= minX && worldPosition.x <= maxX &&
-                           worldPosition.z >= minY && worldPosition.z <= maxY;
+                        worldPosition.z >= minY && worldPosition.z <= maxY;
             }
         }
     }
@@ -78,6 +78,9 @@ public class ZoneManager : MonoBehaviour
     [SerializeField] private ControllerInputs controllerButton;
     [SerializeField] private KeyboardInputs keyboardButton;
     [SerializeField] private string debugTestField = "visible?";
+
+    [Header("Drive Settings")]
+    [SerializeField] private float angleOffset = 0f;
 
     [Header("Debug")]
     [SerializeField] private bool showDebug = true;
@@ -162,7 +165,7 @@ public class ZoneManager : MonoBehaviour
 
         if (ShouldUseDriveSteering(activeZone.Value))
         {
-            targetAngle = CalculateTargetAngle(currentTarget) + 180f;
+            targetAngle = CalculateTargetAngle(currentTarget) + 180f + angleOffset + activeZone.Value.angleOffset;
             currentAngle = transform.localRotation.eulerAngles.y;
 
             steerOutput = steeringPID.UpdateAngle(Time.fixedDeltaTime, currentAngle, targetAngle);

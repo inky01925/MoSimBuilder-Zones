@@ -19,6 +19,7 @@ public class ZoneManagerEditor : UnityEditor.Editor
     private SerializedProperty steerOutputProp;
     private SerializedProperty conditionMechanismProp;
     private SerializedProperty controllerButtonProp;
+    private SerializedProperty angleOffsetProp;
     private SerializedProperty keyboardButtonProp;
 
     private enum ZonePlane
@@ -47,6 +48,7 @@ public class ZoneManagerEditor : UnityEditor.Editor
         currentAngleProp = serializedObject.FindProperty("currentAngle");
         targetAngleProp = serializedObject.FindProperty("targetAngle");
         steerOutputProp = serializedObject.FindProperty("steerOutput");
+        angleOffsetProp = serializedObject.FindProperty("angleOffset");
         conditionMechanismProp = serializedObject.FindProperty("conditionMechanism");
         controllerButtonProp = serializedObject.FindProperty("controllerButton");
         keyboardButtonProp = serializedObject.FindProperty("keyboardButton");
@@ -71,6 +73,9 @@ public class ZoneManagerEditor : UnityEditor.Editor
             EditorGUILayout.PropertyField(controllerButtonProp);
             EditorGUILayout.PropertyField(keyboardButtonProp);
         }
+
+        EditorGUILayout.PropertyField(controllingMechanismProp);
+        EditorGUILayout.PropertyField(angleOffsetProp, new GUIContent("Global Angle Offset"));
 
         EditorGUILayout.PropertyField(showDebugProp);
 
@@ -121,6 +126,11 @@ public class ZoneManagerEditor : UnityEditor.Editor
             if (actionProp.enumValueIndex == (int)ZoneAction.WorldPosition)
             {
                 EditorGUILayout.PropertyField(zoneProp.FindPropertyRelative("targetPosition"));
+                if (actionProp.enumValueIndex == (int)ZoneAction.WorldPosition)
+                {
+                    EditorGUILayout.PropertyField(zoneProp.FindPropertyRelative("targetPosition"));
+                    EditorGUILayout.PropertyField(zoneProp.FindPropertyRelative("angleOffset"), new GUIContent("Angle Offset"));
+                }
             }
             else if (actionProp.enumValueIndex == (int)ZoneAction.JointPosition)
             {
