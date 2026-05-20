@@ -94,7 +94,7 @@ public class InterpolateNode: MonoBehaviour
         var currentSetpoint = "";
         if (targetMechanism && targetMechanism.GetController())
         {
-            currentSetpoint = targetMechanism.GetController().getActiveSetpoint();
+            currentSetpoint = targetMechanism.GetController().GetActiveSetpoint();
         }
         else if (targetWhen == TargetWhen.AtSetpoint)
         {

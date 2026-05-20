@@ -82,7 +82,7 @@ public class PointAtTarget : MonoBehaviour
         bool shouldTarget = targetWhen == TargetWhen.Always || 
                             (targetWhen == TargetWhen.AtSetpoint && 
                              String.Equals(
-                                 (_controller.getActiveSetpoint() ?? "").ToLower().Trim(), 
+                                 (_controller.GetActiveSetpoint() ?? "").ToLower().Trim(), 
                                  SetpointName.ToLower().Trim(), 
                                  StringComparison.OrdinalIgnoreCase));
 
@@ -115,7 +115,7 @@ public class PointAtTarget : MonoBehaviour
                 break;
         }
     
-        _controller.OveridePosition(setpointValue);
+        _controller.OverridePosition(setpointValue);
     }
     
     //runs on editor change

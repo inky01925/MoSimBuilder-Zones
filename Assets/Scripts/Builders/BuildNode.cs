@@ -369,7 +369,12 @@ public class BuildNode: MonoBehaviour
         if (button && !currentGamePiece)
         {
             var pieces = PoolObjects(action);
-            currentGamePiece = ClosestPiece(pieces);
+            var piece = ClosestPiece(pieces);
+            if (piece == null) return false;
+            if (piece.state != GamePieceState.World) return false;
+            if (piece.owner) return false;
+            currentGamePiece = piece;
+            piece.state = GamePieceState.Stationary;
             if (!currentGamePiece) return false;
             currentGamePiece.startingDistance = DistanceToPiece(currentGamePiece);
             currentState = NodeState.Intakeing;

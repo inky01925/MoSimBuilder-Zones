@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using Util;
@@ -6,19 +7,28 @@ using Util;
 public class JointController : MonoBehaviour
 {
     /// <summary>
-    /// Sets the location for the controller to base its targets off of
+    /// The position for the controller to base its targets off of
     /// </summary>
-    public float currentPosition; 
-    /// <summary>
-    /// The joint for the controller to affect control over
-    /// </summary>
-    public ConfigurableJoint joint; 
-    /// <summary>
-    /// Whether the joint is moving in a linear or angular axis (true is angular)
-    /// </summary>
-    public bool angular;
+    public float currentPosition;
 
+    /// <summary>
+    /// The joint for the controller to use
+    /// </summary>
+    public ConfigurableJoint joint;
+
+    /// <summary>
+    /// Whether the joint should move in an angular or linear axis (true is angular)
+    /// </summary>
+    public bool isAngularJoint;
+
+    /// <summary>
+    /// Whether the joint should have an angular limit that it must go around
+    /// </summary>
     public bool useNoWrap;
+
+    /// <summary>
+    /// The angle that the joint cannot cross
+    /// </summary>
     public float noWrapAngle;
 
     public bool useAngleRange;
@@ -26,34 +36,38 @@ public class JointController : MonoBehaviour
     public float maxAngle;
     
     /// <summary>
-    /// Specifies the Euler axis to control. must be (1,0,0) (0,1,0) or (0,0,1)
+    /// Specifies the Euler axis to control. Must be (1,0,0) (0,1,0) or (0,0,1)
     /// </summary>
     public Vector3 driveAxis;
+
     /// <summary>
-    /// Sets the home location.
+    /// The home position
     /// </summary>
-    public float home; 
+    public float home;
+
     /// <summary>
-    /// Used when another scripts needs to control the target instead of the passed through setpoints.
+    /// Used when another script needs to control the target instead of the passed through setpoints.
     /// </summary>
     public bool follower = false;
-    
+
     private PlayerInput _playerInput;
     public InputActionMap _inputMap;
     public float _targetPosition;
-    
+
     private PIDController _pidController;
-    
+
     private Dictionary<SetPoint, float> originalPositions = new Dictionary<SetPoint, float>();
 
-    private string _sequencePoint;
     private bool _sequenceInterrupted, _isSequenceUsingDelay;
     private float _sequenceTime;
-    private bool _delayType;
     private string _activeSequenceName;
     private SetPoint _nextSequencePoint;
-    private bool OverideActive;
+    private bool _overrideActive;
     private string _activeSetpointName;
+
+    private float _delayedTogglePoint;
+    private float _toggleDelayTime;
+    private bool _isWaitingForToggle;
 
     [HideInInspector] public float p;
     [HideInInspector] public float i;
@@ -61,30 +75,38 @@ public class JointController : MonoBehaviour
     [HideInInspector] public float iSat;
     [HideInInspector] public float max;
     [HideInInspector] public float offset = 0;
+
     /// <summary>
-    /// The setpoint struct to base the logic around.
+    /// The setpoint structs that the joint should use.
     /// </summary>
     [HideInInspector] public SetPoint[] setPoints;
 
-    private float overidePosition;
+    private float _overridePosition;
 
-    private float lastTime;
-    
+    private float _lastUpdateTimestamp;
+
     // Start is called before the first frame update
     void Start()
     {
-        _sequenceTime = 0;
-        _targetPosition = 0;
-        _activeSequenceName = null;
-        _sequenceInterrupted = false;
-        _delayType = false;
-        _sequencePoint = "";
+        noWrapAngle = Utils.FlipAngle(noWrapAngle);
+        noWrapAngle = Mathf.Repeat(noWrapAngle, 360);
+
         _playerInput = Utils.FindParentObjectComponent<PlayerInput>(gameObject);
-        
         _inputMap = _playerInput.actions.FindActionMap("Robot");
-        
+        _targetPosition = 0;
+
         _inputMap.Enable();
-        OverideActive = false;
+
+        _sequenceInterrupted = false;
+        _isSequenceUsingDelay = false;
+        _sequenceTime = 0;
+        _activeSequenceName = null;
+        _nextSequencePoint = null;
+        _overrideActive = false;
+        _activeSetpointName = "";
+
+        _delayedTogglePoint = 0;
+        _toggleDelayTime = 0;
 
         _pidController = new PIDController
         {
@@ -96,28 +118,34 @@ public class JointController : MonoBehaviour
             integralSaturation = iSat
         };
 
-        lastTime = Time.time;
+        _lastUpdateTimestamp = Time.time;
     }
 
-    public string getActiveSetpoint()
+    public string GetActiveSetpoint()
     {
         return _activeSetpointName;
     }
 
     /// <summary>
-    /// the overide function for running a joint PID directly instead of through the setpoint object
+    /// Sets the target position for the joint to reach.
     /// </summary>
-    /// <param name="position"></param>
-    public void FollowPosition(float position)
-    {  
-       this._targetPosition = position; 
+    /// <param name="targetPosition"></param> The position to go to
+    public void FollowPosition(float targetPosition)
+    {
+        _targetPosition = targetPosition;
     }
 
-    public void OveridePosition(float position)
+    /// <summary>
+    /// Overrides the target position of the joint.
+    /// Used for keeping the joint at an externally calculated position.
+    /// Must be called periodically.
+    /// </summary>
+    /// <param name="targetPosition"></param> The position to override with
+    public void OverridePosition(float targetPosition)
     {
-        this._targetPosition = position;
-        OverideActive = true;
-        overidePosition = position;
+        _targetPosition = targetPosition;
+        _overrideActive = true;
+        _overridePosition = targetPosition;
     }
 
     // Update is called once per frame
@@ -131,123 +159,96 @@ public class JointController : MonoBehaviour
 
         if (FMS.RobotState == RobotState.disabled)
         {
-            _targetPosition = angular? -currentPosition: currentPosition;
+            _targetPosition = isAngularJoint ? -currentPosition : currentPosition;
             return;
         }
-        noWrapAngle = Mathf.Repeat(noWrapAngle, 360);
+
+        if (follower) return;
 
         // if (useAngleRange)
         // {
         //     _targetPosition = Mathf.Clamp(_targetPosition, minAngle, maxAngle);
         // }
-        
+
         if (_sequenceTime > 0)
-        {
             _sequenceTime -= Time.deltaTime;
-        }
-        
-        if (follower) return;
+        if (_toggleDelayTime > 0)
+            _toggleDelayTime -= Time.deltaTime;
 
-        bool buttonPushed = false;
-        for (int i = 0; i < setPoints.Length; i++)
+
+        foreach (var setPoint in setPoints)
         {
-
-            var setPoint = setPoints[i];
             var controllerAction = _inputMap.FindAction(setPoint.controllerButton.ToString());
             var keyboardAction = _inputMap.FindAction(setPoint.keyboardButton.ToString());
+
             var buttonPressed = false;
             if (controllerAction.triggered)
-            {
-                if (controllerAction.activeControl?.device is Gamepad) 
-                {
+                if (controllerAction.activeControl?.device is Gamepad)
                     buttonPressed = true;
-                }
-            }
             if (keyboardAction.triggered)
-            {
                 if (keyboardAction.activeControl?.device is Keyboard)
-                {
                     buttonPressed = true;
-                }
-            }
-            
-            if (buttonPressed) buttonPushed = true;
-            
-            var controllerHeld = controllerAction.IsPressed() && 
-                                 (controllerAction.activeControl?.device is Gamepad);
-            var keyboardHeld = keyboardAction.IsPressed() && 
-                               (keyboardAction.activeControl?.device is Keyboard);
+
+            var controllerHeld = controllerAction.IsPressed() && controllerAction.activeControl?.device is Gamepad;
+            var keyboardHeld = keyboardAction.IsPressed() && keyboardAction.activeControl?.device is Keyboard;
             var buttonHeld = controllerHeld || keyboardHeld;
 
-            //I dont even know and I just finished.
             switch (setPoint.controlType)
             {
-                case ControlType.Sequence:
+                case ControlType.Sequence when _isSequenceUsingDelay ? _sequenceTime <= 0 : buttonPressed:
+
                     if (_sequenceInterrupted)
                     {
-                        _sequenceInterrupted = false;
-                        _nextSequencePoint = null;
-                        _activeSequenceName = null;
-                        _activeSequenceName = null;
+                        ResetSequence(false);
+                        continue;
                     }
-                    if (_isSequenceUsingDelay ? _sequenceTime <= 0 : buttonPressed)
+
+                    if (_nextSequencePoint == null)
                     {
-                        if (_nextSequencePoint != null)
-                        {
-                            if (setPoint.setpointName != _nextSequencePoint.setpointName) continue;
-                            
-                            _activeSetpointName = setPoint.setpointName;
-                                
-                            if (_nextSequencePoint.sequenceType != SequenceType.end)
-                            {
-                                _targetPosition = _nextSequencePoint.getPoint();
-                            }
-                            else
-                            {
-                                if (!_nextSequencePoint.getPersist())
-                                    _targetPosition = _nextSequencePoint.getPoint();
-                                originalPositions.Clear();
-                                originalPositions[_nextSequencePoint] = _nextSequencePoint.getPoint();
-                                _nextSequencePoint = null; 
-                                _activeSequenceName = null;
-                                _isSequenceUsingDelay = false;
-                                _sequenceTime = 0;
-                                continue; 
-                            }
-                            
-                            switch (setPoint.sequenceType)
-                            {
-                                case SequenceType.delay:
-                                    _sequenceTime = setPoint.delay;
-                                    _isSequenceUsingDelay = true;
-                                    break;
-                                case SequenceType.nextPress:
-                                    _sequenceTime = 0;
-                                    _isSequenceUsingDelay = false;
-                                    break;
-                            }
-
-                            foreach (var t in setPoints)
-                            {
-                                if (t.setpointName != _nextSequencePoint.sequenceTo) continue;
-                                _nextSequencePoint = t;
-                                return;
-                            }
-
-                            _nextSequencePoint = null;
-                        }
-                        else if (_activeSequenceName != null)
-                        {
-                            _targetPosition = home;
-                            _activeSetpointName = null;
-                            _nextSequencePoint = null;
-                            _activeSequenceName = null;
-                            return;
-                        }
+                        if (_activeSequenceName != null)
+                            ResetSequence(true);
+                        continue;
                     }
-                    
+
+                    _activeSetpointName = setPoint.setpointName;
+
+                    if (_nextSequencePoint.sequenceType == SequenceType.end)
+                    {
+                        if (!_nextSequencePoint.getPersist())
+                            _targetPosition = _nextSequencePoint.getPoint();
+
+                        originalPositions.Clear();
+                        originalPositions[_nextSequencePoint] = _nextSequencePoint.getPoint();
+                        ResetSequence(false);
+                        continue;
+                    }
+
+                    _targetPosition = _nextSequencePoint.getPoint();
+
+                    switch (setPoint.sequenceType)
+                    {
+                        case SequenceType.delay:
+                            _sequenceTime = setPoint.delay;
+                            _isSequenceUsingDelay = true;
+                            break;
+                        case SequenceType.nextPress:
+                            _sequenceTime = 0;
+                            _isSequenceUsingDelay = false;
+                            break;
+                    }
+
+                    foreach (var t in setPoints)
+                    {
+                        if (t.setpointName != _nextSequencePoint.sequenceTo)
+                            continue;
+                        _nextSequencePoint = t;
+                        return;
+                    }
+
+                    _nextSequencePoint = null;
+
                     break;
-                
+
                 case ControlType.Hold:
                     if (buttonPressed)
                     {
@@ -272,106 +273,106 @@ public class JointController : MonoBehaviour
 
                     break;
 
-                case ControlType.SequenceStart:
-                    if (buttonPressed)
+                case ControlType.SequenceStart when buttonPressed:
+                    if (_nextSequencePoint == null && _activeSequenceName == null)
                     {
-                        if (_sequenceInterrupted)
+                        _sequenceInterrupted = false;
+                        _activeSequenceName = setPoint.setpointName;
+                        _activeSetpointName = setPoint.setpointName;
+
+                        switch (setPoint.sequenceType)
                         {
-                            _sequenceInterrupted = false;
-                            _nextSequencePoint = null;
-                            _activeSequenceName = null;
+                            case SequenceType.delay:
+                                _sequenceTime = setPoint.delay;
+                                _isSequenceUsingDelay = true;
+                                break;
+                            case SequenceType.nextPress:
+                                _sequenceTime = 0;
+                                _isSequenceUsingDelay = false;
+                                break;
                         }
-                        if (_nextSequencePoint == null && _activeSequenceName == null)
+
+                        if (!setPoint.getPersist())
+                            _targetPosition = setPoint.getPoint();
+
+                        foreach (var t in setPoints)
                         {
-                            _sequenceInterrupted = false;
-                            _activeSequenceName = setPoint.setpointName;
-                            _activeSetpointName = setPoint.setpointName;
-                            switch (setPoint.sequenceType)
-                            {
-                                case SequenceType.delay:
-                                    _sequenceTime = setPoint.delay;
-                                    _isSequenceUsingDelay = true;
-                                    break;
-                                case SequenceType.nextPress:
-                                    _sequenceTime = 0;
-                                    _isSequenceUsingDelay = false;
-                                    break;
-                            }
-
-                            if (!setPoint.getPersist())
-                            {
-                                _targetPosition = setPoint.getPoint();
-                            }
-
-                            foreach (var t in setPoints)
-                            {
-                                if (t.setpointName != setPoint.sequenceTo) continue;
-                                _nextSequencePoint = t;
-                                return;
-                            }
-                            _nextSequencePoint = null;
+                            if (t.setpointName != setPoint.sequenceTo) continue;
+                            _nextSequencePoint = t;
                             return;
                         }
 
-                        if (_activeSequenceName == setPoint.setpointName)
-                        {
-                            if (_nextSequencePoint != null &&
-                                (_nextSequencePoint.keyboardButton == setPoint.keyboardButton ||
-                                 _nextSequencePoint.controllerButton == setPoint.controllerButton)
-                               ) continue;
-                            
-                            _targetPosition = home;
-                            _nextSequencePoint = null;
-                            _activeSequenceName = null;
-                            return;
-                        }
+                        _nextSequencePoint = null;
+                        return;
                     }
-                    
+
+                    if (_activeSequenceName == setPoint.setpointName)
+                    {
+                        if (_nextSequencePoint != null &&
+                            (_nextSequencePoint.keyboardButton == setPoint.keyboardButton ||
+                             _nextSequencePoint.controllerButton == setPoint.controllerButton)
+                           ) continue;
+
+                        ResetSequence(true);
+                        return;
+                    }
+
                     break;
 
                 case ControlType.Toggle:
-                    //TODO: add delay
                     if (buttonPressed)
                     {
                         _sequenceInterrupted = true;
-                        if (originalPositions.ContainsKey(setPoint))
+                        if (!originalPositions.ContainsKey(setPoint))
                         {
-                            _targetPosition = home;
-                            originalPositions.Remove(setPoint);
-                            _activeSetpointName = null;
+                            _toggleDelayTime = setPoint.delay;
+                            _delayedTogglePoint = setPoint.getPoint();
+                            _isWaitingForToggle = true;
+                            originalPositions[setPoint] = setPoint.getPoint();
+                            _activeSetpointName = setPoint.setpointName;
                         }
                         else
                         {
-                            originalPositions[setPoint] = setPoint.getPoint();
-                            _targetPosition = setPoint.getPoint();
-                            _activeSetpointName = setPoint.setpointName;
+                            _targetPosition = home;
+                            _delayedTogglePoint = 0;
+                            _toggleDelayTime = 0;
+                            _isWaitingForToggle = false;
+                            originalPositions.Remove(setPoint);
+                            _activeSetpointName = null;
                         }
                     }
-                    break;
-                case ControlType.LastPressed:
-                    if (buttonPressed)
+
+                    if (_isWaitingForToggle && _toggleDelayTime <= 0)
                     {
-                        _sequenceInterrupted = true;
-                                            
-                        originalPositions.Clear();
-
-                        originalPositions[setPoint] = setPoint.getPoint();
-                        
-                        _activeSetpointName = setPoint.setpointName;
-
-                        if (!setPoint.getPersist())
-                        {
-                            _targetPosition = setPoint.getPoint();
-                        }
+                        _isWaitingForToggle = false;
+                        _targetPosition = _delayedTogglePoint;
                     }
+
+                    break;
+                case ControlType.LastPressed when buttonPressed:
+                    _sequenceInterrupted = true;
+
+                    originalPositions.Clear();
+                    originalPositions[setPoint] = setPoint.getPoint();
+
+                    _activeSetpointName = setPoint.setpointName;
+
+                    if (!setPoint.getPersist())
+                        _targetPosition = setPoint.getPoint();
+
                     break;
             }
         }
-        
-        if (OverideActive)
+
+        if (_overrideActive)
         {
-            _targetPosition = overidePosition;
-            OverideActive = false;
+            _targetPosition = _overridePosition;
+            _overrideActive = false;
+        }
+
+        if (useAngleRange)
+        {
+            _targetPosition = Mathf.Clamp(_targetPosition, minAngle, maxAngle);
         }
 
         if (useAngleRange)
@@ -391,81 +392,71 @@ public class JointController : MonoBehaviour
         float rawPID;
 
         currentPosition -= offset;
-        if (angular)
+        if (isAngularJoint)
         {
             float targetForPid = -_targetPosition;
-            var wrapAngle = noWrapAngle;
-            wrapAngle = Utils.FlipAngle(wrapAngle);
-            wrapAngle = Mathf.Repeat(wrapAngle, 360);
+
             if (useNoWrap)
             {
-                if (PassesThroughWrapAngle(currentPosition, targetForPid, wrapAngle))
+                if (PassesThroughWrapAngle(currentPosition, targetForPid, noWrapAngle))
                 {
-                    // Force the long way by adding/subtracting 360 to the target
-                    float difference = Utils.AngleDifference(_targetPosition, currentPosition);
-        
-                    if (difference > 0)
-                    {
-                        // Would normally go counter-clockwise, force clockwise
-                        targetForPid = wrapAngle + 180;
-                    }
-                    else
-                    {
-                        // Would normally go clockwise, force counter-clockwise
-                        targetForPid = wrapAngle - 180;
-                    }
-                }
-                else
-                {
-                    //this case is redundant for my sanity
-                    // Normal case - shortest path doesn't pass through wrap angle
-                    targetForPid = -_targetPosition;
+                    float currentAngularOffset = Utils.AngleDifference(_targetPosition, currentPosition);
+                    targetForPid = noWrapAngle + (currentAngularOffset > 0 ? 180 : -180);
                 }
             }
-            rawPID = _pidController.UpdateAngle(Time.time - lastTime,currentPosition, targetForPid);
+
+            rawPID = _pidController.UpdateAngle(Time.time - _lastUpdateTimestamp, currentPosition, targetForPid);
             joint.targetAngularVelocity = rawPID * driveAxis;
         }
         else
         {
-            rawPID = _pidController.UpdateLinear(Time.time - lastTime,currentPosition, _targetPosition);
+            rawPID = _pidController.UpdateLinear(Time.time - _lastUpdateTimestamp, currentPosition, _targetPosition);
             joint.targetVelocity = -rawPID * driveAxis;
         }
-        
-        lastTime = Time.time;
+
+        _lastUpdateTimestamp = Time.time;
     }
-    
-    bool PassesThroughWrapAngle(float currentAngle, float targetAngle, float wrapAngle)
+
+    private bool PassesThroughWrapAngle(float currentAngle, float targetAngle, float wrapAngle)
     {
         // Normalize all angles to [0, 360)
-        currentAngle = ((currentAngle % 360) + 360) % 360;
-        targetAngle = ((targetAngle % 360) + 360) % 360;
-        wrapAngle = ((wrapAngle % 360) + 360) % 360;
-    
+        currentAngle = Mathf.Repeat(currentAngle, 360);
+        targetAngle = Mathf.Repeat(targetAngle, 360);
+        wrapAngle = Mathf.Repeat(wrapAngle, 360);
+
         // Calculate the shortest angular difference
-        float diff = targetAngle - currentAngle;
-        if (diff > 180.0f) diff -= 360.0f;
-        if (diff < -180.0f) diff += 360.0f;
-    
-        // Determine the angular span we're traversing
-        float endAngle = currentAngle + diff;
-        if (endAngle < 0) endAngle += 360.0f;
-        if (endAngle >= 360.0f) endAngle -= 360.0f;
-    
+        float angularDifference = targetAngle - currentAngle;
+        if (angularDifference > 180) angularDifference -= 360;
+        if (angularDifference < -180) angularDifference += 360;
+
+        // Determine the end angle of the motion
+        float endAngle = currentAngle + angularDifference;
+        endAngle = Mathf.Repeat(endAngle, 360);
+
         // Check if wrapAngle is between start and end on the shortest path
-        if (diff > 0) {
-            // Moving counter-clockwise
-            if (currentAngle <= endAngle) {
-                return (wrapAngle > currentAngle && wrapAngle < endAngle);
-            } else {
-                return (wrapAngle > currentAngle || wrapAngle < endAngle);
-            }
-        } else {
-            // Moving clockwise  
-            if (currentAngle >= endAngle) {
-                return (wrapAngle < currentAngle && wrapAngle > endAngle);
-            } else {
-                return (wrapAngle < currentAngle || wrapAngle > endAngle);
-            }
+        if (angularDifference > 0) // Moving counter-clockwise
+        {
+            if (currentAngle <= endAngle)
+                return wrapAngle > currentAngle && wrapAngle < endAngle;
+            return wrapAngle > currentAngle || wrapAngle < endAngle;
         }
+
+        // Moving clockwise  
+        if (currentAngle >= endAngle)
+            return wrapAngle < currentAngle && wrapAngle > endAngle;
+        return wrapAngle < currentAngle || wrapAngle > endAngle;
+    }
+
+    private void ResetSequence(bool shouldHome)
+    {
+        Debug.Log("Reset sequence");
+        _sequenceInterrupted = false;
+        _nextSequencePoint = null;
+        _activeSequenceName = null;
+        _isSequenceUsingDelay = false;
+        _sequenceTime = 0;
+
+        if (shouldHome)
+            _targetPosition = home;
     }
 }

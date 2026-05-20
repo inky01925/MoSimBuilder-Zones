@@ -401,7 +401,7 @@ public class BuildArm : BuildMechanism
         }
         
         _controller.iSat = 0;
-        _controller.angular = true;
+        _controller.isAngularJoint = true;
         _controller.driveAxis = new Vector3(1, 0, 0);
         _controller.joint = _joint;
         _controller.useNoWrap = useNoWrapPoint;

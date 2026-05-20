@@ -117,10 +117,10 @@ public class AutoAim : MonoBehaviour
         if (!EditorApplication.isPlaying) return;
 
         // Initialize PlayerInput if needed (similar to AutoAlign pattern)
-        if (_playerInput == null && targetWhen == AimAtWhen.WhenPressing)
+        if (!_playerInput && targetWhen == AimAtWhen.WhenPressing)
         {
             _playerInput = gameObject.GetComponent<PlayerInput>();
-            if (_playerInput != null)
+            if (_playerInput)
             {
                 _inputMap = _playerInput.actions.FindActionMap("Robot");
                 _inputMap?.Enable();
@@ -181,7 +181,7 @@ public class AutoAim : MonoBehaviour
         if (!drivingMechanism || !drivingMechanism.GetController())
             return false;
 
-        var currentSetpoint = drivingMechanism.GetController().getActiveSetpoint();
+        var currentSetpoint = drivingMechanism.GetController().GetActiveSetpoint();
         
         return String.Equals(
             (currentSetpoint ?? "").ToLower().Trim(), 
