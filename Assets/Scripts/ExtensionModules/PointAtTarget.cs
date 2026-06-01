@@ -90,7 +90,7 @@ public class PointAtTarget : MonoBehaviour
 
         if (targetType == TargetType.Zone && zoneManager != null && zoneManager.IsActiveZoneDisabled())
         {
-            _controller.OveridePosition(0f);
+            _controller.OverridePosition(0f);
             return;
         }
 

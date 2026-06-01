@@ -156,7 +156,7 @@ public class ZoneManager : MonoBehaviour
 
         if (activeZone.Value.action == ZoneAction.Deadzone)
         {
-            jointController?.OveridePosition(0f);
+            jointController?.OverridePosition(0f);
             targetAngle = 0f;
             currentAngle = 0f;
             steerOutput = 0f;
@@ -173,7 +173,7 @@ public class ZoneManager : MonoBehaviour
         }
         else if (ShouldUseJointOverride(activeZone.Value))
         {
-            jointController?.OveridePosition(activeZone.Value.jointTargetValue);
+            jointController?.OverridePosition(activeZone.Value.jointTargetValue);
             targetAngle = activeZone.Value.jointTargetValue;
             currentAngle = 0f;
             steerOutput = 0f;
@@ -249,7 +249,7 @@ public class ZoneManager : MonoBehaviour
             if (controller == null) return false;
 
             return string.Equals(
-                (controller.getActiveSetpoint() ?? string.Empty).Trim(),
+                (controller.GetActiveSetpoint() ?? string.Empty).Trim(),
                 (setpointName ?? string.Empty).Trim(),
                 StringComparison.OrdinalIgnoreCase);
         }
