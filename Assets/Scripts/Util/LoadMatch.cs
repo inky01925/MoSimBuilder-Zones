@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using MyBox;
 using NUnit.Framework;
@@ -14,8 +15,11 @@ using Util;
 public class LoadMatch : MonoBehaviour
 {
     [SerializeField] private GameObject[] fieldPrefab;
+    [SerializeField] private bool useCustomSpawnPoint;
     [SerializeField] private Transform spawnPoint;
-    [Header("Robot Selection")]
+
+    [Header("Robot Selection")] [SerializeField]
+    private InspectorDropdown robotSeasonSelected;
     [SerializeField] private InspectorDropdown robotSelected;
 
     [SerializeField] private Cameras view;
@@ -26,7 +30,10 @@ public class LoadMatch : MonoBehaviour
     private TrackingType trackingType;
      private int selectedRobotIndex; 
      private string selectedName;
+     private int selectedSeasonIndex;
+     private string selectedSeasonName;
      private List<GameObject> availableRobots = new List<GameObject>();
+     private List<string> availableSeasons = new List<string>();
 
      private bool isDriverStation() => view == Cameras.DriverStation;
     
@@ -39,12 +46,18 @@ public class LoadMatch : MonoBehaviour
 
     private void OnEnable()
     {
+        CheckSeasons();
+        robotSeasonSelected.canBeSelected = availableSeasons;
         CheckRobots();
         robotSelected.canBeSelected = availableRobots.Select(x => x.name).ToList();
     }
 
     private void LateUpdate()
     {
+        CheckSeasons();
+        robotSeasonSelected.canBeSelected = availableSeasons;
+        robotSeasonSelected.selectedIndex = selectedSeasonIndex;
+        robotSeasonSelected.selectedName = selectedSeasonName;
         CheckRobots();
         robotSelected.canBeSelected = availableRobots.Select(x => x.name).ToList();
         robotSelected.selectedIndex = selectedRobotIndex;
@@ -55,6 +68,8 @@ public class LoadMatch : MonoBehaviour
     {
         selectedName = robotSelected.selectedName;
         selectedRobotIndex = robotSelected.selectedIndex;
+        selectedSeasonIndex = robotSeasonSelected.selectedIndex;
+        selectedSeasonName = robotSeasonSelected.selectedName;
         CheckRobots(); 
         ResetField();
     }
@@ -63,6 +78,8 @@ public class LoadMatch : MonoBehaviour
     {
         selectedName = robotSelected.selectedName;
         selectedRobotIndex = robotSelected.selectedIndex;
+        selectedSeasonIndex = robotSeasonSelected.selectedIndex;
+        selectedSeasonName = robotSeasonSelected.selectedName;
         
         if (!EditorApplication.isPlayingOrWillChangePlaymode && RobotLoaded())
         {
@@ -144,7 +161,10 @@ public class LoadMatch : MonoBehaviour
         if (availableRobots.Count > 0 && selectedRobotIndex >= 0 && selectedRobotIndex < availableRobots.Count)
         {
             GameObject robotToSpawn = availableRobots[selectedRobotIndex];
-            _activeRobot = Instantiate(robotToSpawn, spawnPoint.position, spawnPoint.rotation, _fieldHolder.transform);
+            Transform spawnLocation = useCustomSpawnPoint ? spawnPoint : 
+                                        fms != null ? fms.defaultSpawn : 
+                                                        spawnPoint;
+            _activeRobot = Instantiate(robotToSpawn, spawnLocation.position, spawnLocation.rotation, _fieldHolder.transform);
             var frame = _activeRobot.GetComponent<BuildFrame>();
             var controller = frame.GetSwerveController();
             if (controller)
@@ -209,9 +229,33 @@ public class LoadMatch : MonoBehaviour
     }
 
     
-    public void CheckRobots() 
+    public void CheckSeasons() 
     {
-        GameObject[] loadedRobots = Resources.LoadAll<GameObject>("Robots");
+        string resourcesPath = Path.Combine(Application.dataPath, "Resources", "Robots");
+        
+        availableSeasons.Clear();
+        
+        if (Directory.Exists(resourcesPath))
+        {
+            string[] rawFolderPaths = Directory.GetDirectories(resourcesPath);
+
+            foreach (string path in rawFolderPaths)
+            {
+                string folderName = Path.GetFileName(path);
+                availableSeasons.Add(folderName);
+            }
+        }
+        
+        if (selectedSeasonIndex >= availableSeasons.Count)
+        {
+            selectedSeasonIndex = availableSeasons.Count > 0 ? availableSeasons.Count - 1 : 0;
+        }
+    }
+    
+    public void CheckRobots()
+    {
+        string path = "Robots/" + selectedSeasonName;
+        GameObject[] loadedRobots = Resources.LoadAll<GameObject>(path);
         
         availableRobots.Clear();
         foreach (var robot in loadedRobots)

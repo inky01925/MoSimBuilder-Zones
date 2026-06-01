@@ -31,6 +31,12 @@ namespace BuilderLib
         
             var transform = piece.rb.transform;
             var target = t ? t : action.MoveTo.transform;
+            Rigidbody parentRb = null;
+            if (target != t)
+            {
+                parentRb = Utils.FindParentRB(action.MoveTo.gameObject).GetComponent<Rigidbody>();
+            }
+            
             
             if (piece.state != GamePieceState.Moving)
             {
@@ -41,12 +47,14 @@ namespace BuilderLib
         
             var distance = transform.parent.InverseTransformPoint(target.position) - piece.startPosition;
             var parentPosition = transform.parent.position;
+            Vector3 parentVelocity = Vector3.zero;
+            if (parentRb) parentVelocity = transform.parent.InverseTransformDirection(parentRb.velocity);
             
             // Calculate the step, but clamp it to not overshoot
             var distanceMagnitude = distance.magnitude;
             var maxStep = speed * Time.deltaTime;
             var stepMagnitude = Mathf.Min(maxStep, distanceMagnitude);
-            var step = distance.normalized * stepMagnitude;
+            var step = (distance.normalized * stepMagnitude) + (parentVelocity * Time.smoothDeltaTime);
             
             var finalPosition = piece.startPosition + step;
         

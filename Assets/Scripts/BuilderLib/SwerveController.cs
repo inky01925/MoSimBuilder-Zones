@@ -117,12 +117,12 @@ public class SwerveController : MonoBehaviour
     void FixedUpdate()
     {
         //update controls
-        if (_translateAction.ReadValue<Vector2>().magnitude > 0.05f && inputsOveridable && !steerOveriden)
+        if (_translateAction.ReadValue<Vector2>().x > 0.05f && inputsOveridable && !steerOveriden)
         {
             _translateValue = _translateAction.ReadValue<Vector2>();
             _rotateValue = _rotateAction.ReadValue<Vector2>();
             inputsOveriden = false;
-        } else if (_rotateAction.ReadValue<Vector2>().magnitude > 0.05f && inputsOveridable && steerOveriden)
+        } else if (_rotateAction.ReadValue<Vector2>().x > 0.05f && inputsOveridable && steerOveriden)
         {
             _translateValue = _translateAction.ReadValue<Vector2>();
             _rotateValue = _rotateAction.ReadValue<Vector2>();
@@ -131,7 +131,7 @@ public class SwerveController : MonoBehaviour
         {
             _translateValue = _translateAction.ReadValue<Vector2>();
         }
-        else if (!inputsOveriden || !steerOveriden)
+        else if (!inputsOveriden && !steerOveriden)
         {
             _translateValue = _translateAction.ReadValue<Vector2>();
             _rotateValue = _rotateAction.ReadValue<Vector2>();

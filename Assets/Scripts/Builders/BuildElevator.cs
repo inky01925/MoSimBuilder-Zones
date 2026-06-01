@@ -389,7 +389,7 @@ public class Buildelevator : BuildMechanism
                 _controllers[i].max = 4;
             }
 
-            _controllers[i].angular = false;
+            _controllers[i].isAngularJoint = false;
             _controllers[i].driveAxis = new Vector3(0, 1, 0);
             _controllers[i].joint = _joints[i];
 

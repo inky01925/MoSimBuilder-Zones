@@ -7,6 +7,8 @@ using Util;
 
 public class FMS : MonoBehaviour
 {
+    //THIS SCRIPT SHOULD BE SEASON GENERIC AND FEATURE NO SEASON SPECIFIC CODE
+    public Transform defaultSpawn;
     public int matchTime = 150;
     public int autoTime = 15;
     public float autoDisableTime = 0.5f;
@@ -18,13 +20,16 @@ public class FMS : MonoBehaviour
     public static RobotState RobotState;
     public static MatchState MatchState;
     public MatchState state;
-    
+
     private MatchState previousMatchState;
 
     private LoadMatch matchLoader;
     private TextMeshProUGUI timer;
 
     public RobotState robotState;
+    
+
+
     // Start is called before the first frame update
     void OnEnable()
     {
@@ -38,47 +43,43 @@ public class FMS : MonoBehaviour
         robotState = RobotState;
         if (robotState == RobotState.enabled) MatchTimer -= Time.deltaTime;
 
-        if (MatchTimer >= matchTime - autoTime)
+        MatchState newState;
+        if (MatchTimer < 0)
         {
-            MatchState = MatchState.auto;
-        }  else if (MatchTimer >= endgameTime)
-        {
-            MatchState = MatchState.teleop;
+            newState = MatchState.finished;
         }
-        else if (MatchTimer < 0)
+        else if (MatchTimer <= endgameTime)
         {
-            MatchState = MatchState.finished;
-        } else if (MatchTimer <= endgameTime)
-        {
-            MatchState = MatchState.endgame;
+            newState = MatchState.endgame;
         }
-        
-        if (MatchState != previousMatchState && MatchState != MatchState.endgame)
+        else if (MatchTimer >= matchTime - autoTime)
         {
-            switch (MatchState)
+            newState = MatchState.auto;
+        }
+        else
+        {
+            newState = MatchState.teleop;
+        }
+
+        if (newState != previousMatchState)
+        {
+            switch (newState)
             {
                 case MatchState.teleop:
-                    MatchState = MatchState.auto;
                     StartCoroutine(wait(autoDisableTime));
-                    MatchState = MatchState.teleop;
                     break;
                 case MatchState.finished:
-                    MatchState = MatchState.endgame;
                     StartCoroutine(wait(matchDisabledTime));
-                    MatchState = MatchState.finished;
                     break;
             }
         }
-        
-        previousMatchState = MatchState;
-        
-        float minutes = Mathf.FloorToInt(MatchTimer / 60); 
-        
-        // The remainder after dividing by 60 gives the remaining seconds
-        float seconds = Mathf.FloorToInt(MatchTimer % 60);
-        
-        if (minutes < 0) minutes = 0;
-        if (seconds < 0) seconds = 0;
+
+        MatchState = newState;
+        previousMatchState = newState;
+
+        int totalSeconds = Mathf.CeilToInt(Mathf.Max(MatchTimer, 0f));
+        int minutes = totalSeconds / 60;
+        int seconds = totalSeconds % 60;
 
         if (timer != null)
         {
@@ -100,13 +101,14 @@ public class FMS : MonoBehaviour
         {
             timer = dispT.GetComponent<TextMeshProUGUI>();
         }
-
+        
         matchLoader = Utils.FindParentObjectComponent<LoadMatch>(gameObject);
         matchLoader.setFMS(this);
         MatchTimer = matchTime;
         previousMatchState = MatchState.auto;
         MatchState = MatchState.auto;
         RobotState = RobotState.enabled;
+       
     }
 }
 
