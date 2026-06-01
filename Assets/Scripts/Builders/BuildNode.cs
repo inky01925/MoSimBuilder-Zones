@@ -331,7 +331,9 @@ public class BuildNode: MonoBehaviour
 
     private bool TransferPiece(bool button, bool butonPressed, ref NodeAction action)
     {
-        if (!currentGamePiece) return false;
+        if (!currentGamePiece) {
+            return false;
+        }
         if (action.PieceType != currentGamePiece.pieceType)
         {
             return false;

@@ -74,7 +74,6 @@ public class ZoneManagerEditor : UnityEditor.Editor
             EditorGUILayout.PropertyField(keyboardButtonProp);
         }
 
-        EditorGUILayout.PropertyField(controllingMechanismProp);
         EditorGUILayout.PropertyField(angleOffsetProp, new GUIContent("Global Angle Offset"));
 
         EditorGUILayout.PropertyField(showDebugProp);
@@ -126,11 +125,7 @@ public class ZoneManagerEditor : UnityEditor.Editor
             if (actionProp.enumValueIndex == (int)ZoneAction.WorldPosition)
             {
                 EditorGUILayout.PropertyField(zoneProp.FindPropertyRelative("targetPosition"));
-                if (actionProp.enumValueIndex == (int)ZoneAction.WorldPosition)
-                {
-                    EditorGUILayout.PropertyField(zoneProp.FindPropertyRelative("targetPosition"));
-                    EditorGUILayout.PropertyField(zoneProp.FindPropertyRelative("angleOffset"), new GUIContent("Angle Offset"));
-                }
+                EditorGUILayout.PropertyField(zoneProp.FindPropertyRelative("angleOffset"), new GUIContent("Angle Offset"));
             }
             else if (actionProp.enumValueIndex == (int)ZoneAction.JointPosition)
             {

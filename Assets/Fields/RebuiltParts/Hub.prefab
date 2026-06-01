@@ -965,7 +965,7 @@ HingeJoint:
     targetPosition: 0
   m_UseMotor: 1
   m_Motor:
-    targetVelocity: -8000
+    targetVelocity: -12000
     force: 3.4028233e+38
     freeSpin: 0
   m_UseLimits: 0
@@ -3071,7 +3071,7 @@ HingeJoint:
     targetPosition: 0
   m_UseMotor: 1
   m_Motor:
-    targetVelocity: -8000
+    targetVelocity: -12000
     force: 3.4028233e+38
     freeSpin: 0
   m_UseLimits: 0
@@ -10120,7 +10120,7 @@ HingeJoint:
     targetPosition: 0
   m_UseMotor: 1
   m_Motor:
-    targetVelocity: -8000
+    targetVelocity: -12000
     force: 3.4028233e+38
     freeSpin: 0
   m_UseLimits: 0
@@ -18268,7 +18268,7 @@ HingeJoint:
     targetPosition: 0
   m_UseMotor: 1
   m_Motor:
-    targetVelocity: -8000
+    targetVelocity: -12000
     force: 3.4028233e+38
     freeSpin: 0
   m_UseLimits: 0
@@ -24809,7 +24809,7 @@ HingeJoint:
     targetPosition: 0
   m_UseMotor: 1
   m_Motor:
-    targetVelocity: -8000
+    targetVelocity: -12000
     force: 3.4028233e+38
     freeSpin: 0
   m_UseLimits: 0
@@ -26805,7 +26805,7 @@ HingeJoint:
     targetPosition: 0
   m_UseMotor: 1
   m_Motor:
-    targetVelocity: -8000
+    targetVelocity: -12000
     force: 3.4028233e+38
     freeSpin: 0
   m_UseLimits: 0
@@ -50252,7 +50252,7 @@ HingeJoint:
     targetPosition: 0
   m_UseMotor: 1
   m_Motor:
-    targetVelocity: -8000
+    targetVelocity: -12000
     force: 3.4028233e+38
     freeSpin: 0
   m_UseLimits: 0
@@ -55805,7 +55805,7 @@ HingeJoint:
     targetPosition: 0
   m_UseMotor: 1
   m_Motor:
-    targetVelocity: -8000
+    targetVelocity: -12000
     force: 3.4028233e+38
     freeSpin: 0
   m_UseLimits: 0
@@ -57251,7 +57251,7 @@ HingeJoint:
     targetPosition: 0
   m_UseMotor: 1
   m_Motor:
-    targetVelocity: -8000
+    targetVelocity: -12000
     force: 3.4028233e+38
     freeSpin: 0
   m_UseLimits: 0
